@@ -4,20 +4,20 @@
 // =====================================================================
 const { Router } = require('express');
 const controller = require('../controllers/pedidos.controller');
-const { verificarToken, requiereRol } = require('../middlewares/auth.js');
+const { verificarToken, requiereRol } = require('../middlewares/auth');
 
 const router = Router();
 
-router.use(verificarToken); // todas las rutas requieren token válido
+// Todas las rutas exigen un token válido (401 si falta o es inválido)
+router.use(verificarToken);
 
+// Lectura: cualquier rol
+router.get('/', controller.listar);       // ?estado=  y  ?ids=1,2,3
+router.get('/:id', controller.obtener);
 
-router.get('/', controller.listar);      // listar todos los pedidos
-router.get('/:id', controller.obtener);  // obtener un pedido por id
-router.use(requiereRol('administrador'));
-router.post('/', controller.crear);      // crear un pedido
-
-router.put('/:id', controller.actualizar); // actualizar un pedido por id
-router.delete('/:id', controller.eliminar); // eliminar un pedido por id
-
+// Escritura: solo administrador (403 para los demás roles)
+router.post('/', requiereRol('administrador'), controller.crear);
+router.put('/:id', requiereRol('administrador'), controller.actualizar);
+router.delete('/:id', requiereRol('administrador'), controller.eliminar);
 
 module.exports = router;

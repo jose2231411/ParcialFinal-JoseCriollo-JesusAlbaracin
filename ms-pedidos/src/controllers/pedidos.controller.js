@@ -21,8 +21,8 @@ async function listar(req, res) {
       throw new HttpError(400, 'Los ids deben ser enteros positivos separados por comas');
     }
   }
-  const pedido = await service.listar(filtros);
-  res.status(200).json(pedido);
+  const pedidos = await service.listar(filtros);
+  res.status(200).json(pedidos);
 }
 
 // GET /pedidos/:id

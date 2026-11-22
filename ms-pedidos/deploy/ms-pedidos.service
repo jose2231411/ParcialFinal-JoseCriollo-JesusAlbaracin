@@ -1,0 +1,14 @@
+[Unit]
+Description=Microservicio pedidos - Evaluación Módulo 3
+After=network.target
+
+[Service]
+User=nodeapps
+Group=nodeapps
+# Ajustar a la carpeta donde se clone el repositorio en servidor2
+WorkingDirectory=/srv/m3examen/app/ms-pedidos
+ExecStart=/usr/bin/node --env-file=.env src/index.js
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

@@ -1,74 +1,98 @@
-# ms-usuarios · versión completa (Módulo 3)
+# ms-pedidos · Evaluación Módulo 3
 
-Redes y Servicios Multimedia · UAO. Microservicio común de todos los grupos:
-gestiona los usuarios de la aplicación, guarda las contraseñas cifradas (bcrypt)
-y entrega tokens JWT al iniciar sesión. **Nadie del grupo lo modifica**: se configura con su `.env`.
+Redes y Servicios Multimedia · UAO. Pareja 1 (jornada diurna):
+Jose Andres Criollo Echeverri y Jesús David Albarracín Ortega.
 
-## Cómo ejecutarlo
+Microservicio de pedidos con arquitectura en capas
+(`routes → controller → service → repository`, más `models/pedido.js` y `utils/http-error.js`),
+MySQL y seguridad con el `auth.js` de ms-usuarios.
 
-Requisitos: Node.js 22.9 o superior y MySQL 8.
+## Cómo ejecutarlo (en el PC)
 
-1. Crear la base de datos y su usuario (como root, en MySQL Workbench o la consola):
+Requisitos: Node.js 22.9 o superior, MySQL 8 y ms-usuarios corriendo en el puerto 3001.
 
-```sql
-CREATE DATABASE usuarios_db;
-CREATE USER 'usuarios_user'@'localhost' IDENTIFIED BY 'una-clave-segura';
-GRANT ALL PRIVILEGES ON usuarios_db.* TO 'usuarios_user'@'localhost';
+1. Crear la base de datos y su usuario (como root):
+
+   ```sql
+   CREATE DATABASE pedidos_db;
+   CREATE USER 'pedidos_user'@'localhost' IDENTIFIED BY 'una-clave-segura';
+   GRANT ALL PRIVILEGES ON pedidos_db.* TO 'pedidos_user'@'localhost';
+   ```
+
+2. Crear la tabla y los registros iniciales con `db/schema.sql` (`SOURCE db/schema.sql;`).
+3. `npm install`
+4. Copiar `.env.example` como `.env`. `JWT_SECRET` debe ser **igual** al de ms-usuarios.
+5. `npm run dev` → `ms-pedidos escuchando en http://127.0.0.1:3011`
+
+Cada petición queda registrada en la terminal:
+
+```
+[2026-11-22T18:30:01.123Z] GET /pedidos?estado=pendiente -> 200 (8 ms)
 ```
 
-2. Crear la tabla con `db/schema.sql` (Workbench: File → Open SQL Script, o en la consola `SOURCE db/schema.sql;`).
-3. `npm install`
-4. Copiar `.env.example` como `.env` y ajustar los roles de su empresa y el `JWT_SECRET` del grupo.
-5. `npm run dev`
+## Entidad Pedido
 
-Usuario inicial: `admin@empresa.com` / `Admin2026*` (rol administrador).
+| Campo | Tipo | Regla |
+|---|---|---|
+| id | entero | Lo asigna la base de datos |
+| numero | texto | Obligatorio y **único** (409 si se repite) |
+| cliente | texto | Obligatorio |
+| cantidad | entero | Obligatorio, mayor que 0 |
+| fecha | fecha `AAAA-MM-DD` | Obligatoria y debe existir (2026-02-30 → 400) |
+| estado | texto | `pendiente`, `enviado` o `entregado` |
 
-## Endpoints
+Ejemplo de cuerpo para POST y PUT:
+
+```json
+{ "numero": "PED-010", "cliente": "Cliente D", "cantidad": 4, "fecha": "2026-11-20", "estado": "pendiente" }
+```
+
+## Seguridad
+
+Todas las rutas de `/pedidos` exigen la cabecera `Authorization: Bearer <token>`,
+con el token que entrega `POST /usuarios/login` de ms-usuarios.
+
+- Sin token, o con un token inválido o vencido → **401**
+- GET → cualquier rol
+- POST, PUT y DELETE → solo `administrador` (otro rol → **403**)
+
+## Contrato
 
 | Método | URI | Quién | Respuesta exitosa | Errores |
 |---|---|---|---|---|
-| GET | /health | Público | 200 | — |
-| POST | /usuarios/login | Público | 200 `{ token, usuario }` | 401 email o contraseña incorrectos |
-| GET | /usuarios | administrador | 200 arreglo (filtros `?rol=` y `?ids=`) | 401 · 403 |
-| GET | /usuarios/me | Cualquier rol | 200 los datos del dueño del token | 401 |
-| GET | /usuarios/:id | administrador, o el propio usuario | 200 usuario | 400 · 401 · 403 · 404 |
-| POST | /usuarios | administrador | 201 usuario + Location | 400 · 401 · 403 · 409 |
-| PUT | /usuarios/:id | administrador | 200 usuario | 400 · 401 · 403 · 404 · 409 |
-| DELETE | /usuarios/:id | administrador | 204 | 401 · 403 · 404 |
+| GET | /health | Público | 200 `{ servicio, estado }` | — |
+| GET | /pedidos | Cualquier rol | 200 arreglo de pedidos | 400 filtro inválido · 401 |
+| GET | /pedidos?estado=pendiente | Cualquier rol | 200 arreglo filtrado por estado | 400 estado inválido · 401 |
+| GET | /pedidos?ids=1,3 | Cualquier rol | 200 arreglo con esos pedidos | 400 ids inválidos · 401 |
+| GET | /pedidos/:id | Cualquier rol | 200 pedido | 400 id inválido · 401 · 404 |
+| POST | /pedidos | administrador | 201 pedido creado + cabecera `Location` | 400 · 401 · 403 · 409 numero repetido |
+| PUT | /pedidos/:id | administrador | 200 pedido actualizado | 400 · 401 · 403 · 404 · 409 numero repetido |
+| DELETE | /pedidos/:id | administrador | 204 sin cuerpo | 400 id inválido · 401 · 403 · 404 |
 
-Un usuario que no es administrador solo puede consultar su propio registro (`/usuarios/me` o `/usuarios/<su id>`); el resto de operaciones son del administrador.
+Los filtros `?estado=` y `?ids=` se pueden combinar.
 
-`password` se envía al crear (mínimo 8 caracteres) y es opcional al actualizar.
-**Nunca aparece en una respuesta.**
-
-## El token
-
-`POST /usuarios/login` con `{"email": "...", "password": "..."}` responde:
+Formato de los errores:
 
 ```json
-{ "token": "eyJhbGciOi...", "usuario": { "id": 1, "nombre": "...", "email": "...", "rol": "administrador", "activo": true } }
+{ "error": "Datos inválidos", "detalles": ["cantidad es obligatoria y debe ser un entero mayor que 0"] }
 ```
 
-Las demás peticiones, en este y en todos los microservicios del grupo, envían la cabecera
-`Authorization: Bearer <token>`. El token lleva `{ id, nombre, rol }`, vence según `JWT_EXPIRA`
-y se verifica con `JWT_SECRET`, que debe ser **la misma en todos los microservicios del grupo**.
+## Pruebas
 
-## El middleware para los demás microservicios
+`docs/ms-pedidos.postman_collection.json`: importarla en Postman y ejecutarla con el Runner,
+**en orden**. Primero hace login como administrador (`admin@empresa.com` / `Admin2026*`) y guarda
+el token, que el resto de peticiones usan automáticamente. Hay una prueba por cada código:
+200, 201, 204, 400, 401, 404 y 409. El pedido que crea la prueba de 201 se borra al final, así que
+la colección se puede ejecutar varias veces.
 
-`src/middlewares/auth.js` se copia **sin cambios** a cada microservicio del grupo
-(junto con `npm install jsonwebtoken`). Ofrece:
+Variables de la colección:
 
-- `verificarToken`: exige un token válido → 401 si falta, es inválido o venció.
-- `requiereRol('rol1', 'rol2')`: deja pasar solo esos roles → 403 a los demás.
+- `usuariosUrl` = `http://localhost:3001`
+- `pedidosUrl` = `http://localhost:3011`
 
-## CORS (frontend en su PC)
+Para probar a través del host virtual del examen, se cambian las dos variables por la URL del gateway.
 
-ms-usuarios tiene CORS activo (`app.use(cors())` en `src/app.js`). Así, un frontend abierto
-en el navegador desde otra dirección (doble clic en el HTML, o Live Server en otro puerto)
-puede llamar a `http://localhost:3001`. Sin CORS, el navegador bloquea la respuesta y en la
-consola aparece *blocked by CORS policy*.
+## Despliegue (servidor2)
 
-Para conectar las pantallas de su entidad con su propio microservicio, hagan lo mismo en él:
-`npm install cors` y `app.use(cors());` antes de `app.use(express.json());`.
-
-En el Taller 3, detrás del gateway, el frontend y la API comparten dirección y CORS ya no hace falta.
+`deploy/ms-pedidos.service` es la plantilla del servicio de systemd (usuario `nodeapps`).
+En servidor2, `.env` debe tener `DB_HOST` con la IP de servidor1 y permisos 640.
