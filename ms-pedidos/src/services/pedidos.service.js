@@ -16,7 +16,14 @@ async function componer(pedidos, token) {
     // degradación controlada si ms-bodegas está caído
     return pedidos.map((e) => ({ ...e, bodega_id: null, aviso: 'ms-bodegas no disponible' }));
   }
-  return pedidos.map((e) => ({ ...e, bodega_id: bodegas.get(e.bodega_id) || null }));
+  return pedidos.map((e) => {
+    const bodega = bodegas.get(e.bodega_id);
+    if (!bodega) return { ...e, bodega_id: null };
+
+    const bodegaSinActiva = { ...bodega };
+    delete bodegaSinActiva.activa;
+    return { ...e, bodega_id: bodegaSinActiva };
+  });
 }
 
 // GET /pedidos con filtros opcionales ?estado= y ?ids=
@@ -39,9 +46,10 @@ async function crear(datos, token) {
   if (errores.length > 0) throw new HttpError(400, 'Datos inválidos', errores);
 
   if (!(await bodegasclient.existeBodega(datos.bodega_id, token))) {
-    const bodega = await bodegasclient.bodegasPorIds([datos.bodega_id], token).then((bodegas) => bodegas.get(datos.bodega_id));
+    
     throw new HttpError(400, `No existe la bodega con id ${datos.bodega_id}`);
   }
+  const bodega = await bodegasclient.bodegasPorIds([datos.bodega_id], token).then((bodegas) => bodegas.get(datos.bodega_id));
   if (!bodega.activa) {
     throw new HttpError(409, `La bodega con id ${datos.bodega_id} no está activa`);
   }
@@ -67,11 +75,14 @@ async function actualizar(id, datos, token) {
   // Primero se comprueba que exista (404) y después la unicidad (409).
   if (!(await repo.findById(id))) throw new HttpError(404, `No existe el pedido con id ${id}`);
   // Segundo se comprueba que la bodega exista (400).
+
   if (!(await bodegasclient.existeBodega(datos.bodega_id, token))) {
-    const bodega = await bodegasclient.bodegasPorIds([datos.bodega_id], token).then((bodegas) => bodegas.get(datos.bodega_id));
+    
     throw new HttpError(400, `No existe la bodega con id ${datos.bodega_id}`);
   }
+
   // Tercero se comprueba que la bodega esté activa (409).
+  const bodega = await bodegasclient.bodegasPorIds([datos.bodega_id], token).then((bodegas) => bodegas.get(datos.bodega_id));
   if (!bodega.activa) {
     throw new HttpError(409, `La bodega con id ${datos.bodega_id} no está activa`);
   }
