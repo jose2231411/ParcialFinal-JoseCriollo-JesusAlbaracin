@@ -40,11 +40,13 @@ Cada petición queda registrada en la terminal:
 | cantidad | entero | Obligatorio, mayor que 0 |
 | fecha | fecha `AAAA-MM-DD` | Obligatoria y debe existir (2026-02-30 → 400) |
 | estado | texto | `pendiente`, `enviado` o `entregado` |
+| bodega_id | entero | Obligatorio, mayor que 0 |
+
 
 Ejemplo de cuerpo para POST y PUT:
 
 ```json
-{ "numero": "PED-010", "cliente": "Cliente D", "cantidad": 4, "fecha": "2026-11-20", "estado": "pendiente" }
+{ "numero": "PED-010", "cliente": "Cliente D", "cantidad": 4, "fecha": "2026-11-20", "estado": "pendiente", "bodega_id": 1 }
 ```
 
 ## Seguridad
@@ -89,6 +91,7 @@ Variables de la colección:
 
 - `usuariosUrl` = `http://localhost:3001`
 - `pedidosUrl` = `http://localhost:3011`
+- `bodegasUrl` = `http://localhost:3012`
 
 Para probar a través del host virtual del examen, se cambian las dos variables por la URL del gateway.
 

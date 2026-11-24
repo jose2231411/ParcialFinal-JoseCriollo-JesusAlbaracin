@@ -39,6 +39,7 @@ function validarPedido(datos) {
   if (!ESTADOS_VALIDOS.includes(datos.estado)) {
     errores.push(`estado es obligatorio y debe ser uno de: ${ESTADOS_VALIDOS.join(', ')}`);
   }
+  if (!enteroPositivo(datos.bodega_id)) errores.push('bodega_id es obligatorio y debe ser un entero mayor que 0');
   return errores;
 }
 
@@ -50,6 +51,7 @@ function construirPedido(datos) {
     cantidad: Number(datos.cantidad),
     fecha: datos.fecha,
     estado: datos.estado,
+    bodega_id: Number(datos.bodega_id),
   };
 }
 
