@@ -12,11 +12,12 @@ CREATE TABLE pedidos (
   cliente  VARCHAR(100) NOT NULL,
   cantidad INT          NOT NULL CHECK (cantidad > 0),
   fecha    DATE         NOT NULL,
-  estado   VARCHAR(20)  NOT NULL CHECK (estado IN ('pendiente', 'enviado', 'entregado'))
+  estado   VARCHAR(20)  NOT NULL CHECK (estado IN ('pendiente', 'enviado', 'entregado')),
+  bodega_id INT NOT NULL
 );
 
-INSERT INTO pedidos (numero, cliente, cantidad, fecha, estado) VALUES
-('PED-001', 'Cliente A', 10, '2026-11-02', 'pendiente'),
-('PED-002', 'Cliente B',  5, '2026-11-05', 'enviado'),
-('PED-003', 'Cliente C', 20, '2026-11-10', 'entregado'),
-('PED-004', 'Cliente A',  3, '2026-11-15', 'pendiente');
+INSERT INTO pedidos (numero, cliente, cantidad, fecha, estado, bodega_id) VALUES
+('PED-001', 'Cliente A', 10, '2026-11-02', 'pendiente', 1),
+('PED-002', 'Cliente B',  5, '2026-11-05', 'enviado', 2),
+('PED-003', 'Cliente C', 20, '2026-11-10', 'entregado', 4),
+('PED-004', 'Cliente A',  3, '2026-11-15', 'pendiente',3);
